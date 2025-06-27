@@ -25,14 +25,14 @@ def build_prompt(ticker: str) -> str:
     )
 
 def get_stock_research(prompt: str):
-    url = PERPLEXITY_API_URL
+    print(PERPLEXITY_API_KEY)
     headers = {
         "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "llama-3-sonar-small-32k-online",  # Can also try "sonar-medium"
+        "model": "sonar",
         "messages": [
             {
                 "role": "system",
@@ -44,12 +44,31 @@ def get_stock_research(prompt: str):
             }
         ]
     }
-
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Perplexity API call failed")
-
-    return response.json()["choices"][0]["message"]["content"]
+    try:
+        response = requests.post(PERPLEXITY_API_URL, headers=headers, json=payload, timeout=20)
+        print("Perplexity API status:", response.status_code)
+        print("Perplexity API response:", response.text)
+        response.raise_for_status()
+        data = response.json()
+    
+        # Defensive: check structure
+        if (
+            "choices" in data and
+            isinstance(data["choices"], list) and
+            data["choices"] and
+            "message" in data["choices"][0] and
+            "content" in data["choices"][0]["message"]
+        ):
+            return data["choices"][0]["message"]["content"]
+    
+        else:
+            raise HTTPException(status_code=502, detail="Malformed response from Perplexity API.")
+        
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Perplexity API request timed out.")
+    
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Perplexity API error: {str(e)}")
 
 @app.post("/analyze")
 def analyze_stock(stockQuery: StockQuery):
@@ -57,5 +76,7 @@ def analyze_stock(stockQuery: StockQuery):
     try:
         result = get_stock_research(prompt)
         return {"ticker": stockQuery.ticker.upper(), "analysis": result}
+    except HTTPException as e:
+        raise e  # Let FastAPI handle HTTPExceptions
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error.")
