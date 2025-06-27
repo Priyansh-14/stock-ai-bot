@@ -60,4 +60,7 @@ You can use tools like [curl](https://curl.se/) or [Postman](https://www.postman
 curl -X POST "http://127.0.0.1:5000/analyze" -H "Content-Type: application/json" -d '{"ticker": "MSFT"}'
 ```
 
-You will get the result in outputs directory in your folder
+### **7. Retrieve the PDF Report**
+
+After a successful request, the generated PDF report will be saved in the outputs directory in your project folder.
+The API response will include the path to the generated PDF.
