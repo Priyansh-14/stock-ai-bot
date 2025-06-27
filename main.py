@@ -1,7 +1,9 @@
 import os
 import re
+from fastapi.responses import FileResponse
 import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -16,17 +18,23 @@ load_dotenv()
 
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
-PERPLEXITY_MODEL = "sonar-deep-research"
+PERPLEXITY_MODEL = "sonar"
 
 # sonar-deep-research
 # sonar-reasoning-pro
 # sonar-reasoning
 # sonar-pro sonar
+# sonar
 
 if not PERPLEXITY_API_KEY:
     raise RuntimeError("PERPLEXITY_API_KEY not set in environment.")
 
 app = FastAPI()
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+# Serve static files (including index.html) from a 'static' folder
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 
 class StockQuery(BaseModel):
     ticker: str
@@ -175,3 +183,7 @@ def analyze_stock(stockQuery: StockQuery):
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error.")
+    
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")

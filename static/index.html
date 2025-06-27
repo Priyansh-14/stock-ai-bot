@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stock AI Bot</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      label {
+        font-weight: bold;
+      }
+      input[type="text"] {
+        padding: 8px;
+        margin: 8px 0;
+        width: 200px;
+      }
+      button {
+        padding: 8px 16px;
+      }
+      #result {
+        margin-top: 20px;
+      }
+      #error {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Stock AI Bot</h1>
+    <form id="stockForm">
+      <label for="ticker">Enter Stock Ticker:</label><br />
+      <input
+        type="text"
+        id="ticker"
+        name="ticker"
+        required
+        placeholder="e.g. MSFT"
+      /><br />
+      <button type="submit">Analyze</button>
+    </form>
+    <div id="result"></div>
+    <div id="error"></div>
+
+    <script>
+      document
+        .getElementById("stockForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          document.getElementById("result").innerHTML = "";
+          document.getElementById("error").innerHTML = "";
+          const ticker = document
+            .getElementById("ticker")
+            .value.trim()
+            .toUpperCase();
+          if (!ticker) {
+            document.getElementById("error").innerText =
+              "Please enter a ticker code.";
+            return;
+          }
+          try {
+            const response = await fetch("/analyze", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ticker }),
+            });
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || "Unknown error");
+            }
+            const data = await response.json();
+            if (data.pdf_path) {
+              // Try to download the PDF
+              const pdfUrl = data.pdf_path.startsWith("/")
+                ? data.pdf_path
+                : "/" + data.pdf_path;
+              document.getElementById("result").innerHTML = `
+                        <p>Analysis complete for <strong>${ticker}</strong>.</p>
+                        <a href="${pdfUrl}" download>Download PDF Report</a>
+                    `;
+            } else {
+              document.getElementById("result").innerText = "No PDF generated.";
+            }
+          } catch (err) {
+            document.getElementById("error").innerText =
+              "Error: " + err.message;
+          }
+        });
+    </script>
+  </body>
+</html>
